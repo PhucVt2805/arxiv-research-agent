@@ -5,5 +5,7 @@ description = "An AI Agent powered by LangGraph to fetch, summarize, and discuss
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "arxiv>=2.4.0",
+    "dotenv>=0.9.9",
     "pydantic>=2.12.5",
 ]

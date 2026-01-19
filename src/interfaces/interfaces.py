@@ -1,15 +1,19 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from datetime import datetime
 
-class NewsItem(BaseModel):
-    id: str
+class ArxivPaper(BaseModel):
+    id: str = Field(alias="_id")
     title: str
-    content: str
+    author: List[str]
+    arxiv_url: str
+    pdf_url: str
+    published_date: datetime
+    updated_date: datetime
     summary: str
-    source_url: str
-    published_date: str
-    metadata: Dict[str, Any]
+    prime_category: str
+    categories: List[str]
 
 class BaseNewsScraper(ABC):
     @abstractmethod
@@ -19,8 +23,8 @@ class BaseNewsScraper(ABC):
 
 
     @abstractmethod
-    def parse_content(self, raw_html: str) -> List[NewsItem]:
-        """Convert raw HTML to clean list of NewsItem objects"""
+    def parse_content(self, raw_html: str) -> List[ArxivPaper]:
+        """Convert raw HTML to clean list of ArxivPaper objects"""
         pass
 
 class BaseVectorStore(ABC):
@@ -28,12 +32,12 @@ class BaseVectorStore(ABC):
     Interface to store and search vectors (RAG).
     """
     @abstractmethod
-    def add_documents(self, documents: List[NewsItem]):
+    def add_documents(self, documents: List[ArxivPaper]):
         """Save documents to vector db"""
         pass
 
     @abstractmethod
-    def similarity_search(self, query: str, k: int = 3) -> List[NewsItem]:
+    def similarity_search(self, query: str, k: int = 3) -> List[ArxivPaper]:
         """Search for related content based on query"""
         pass
 

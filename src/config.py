@@ -1,1 +1,0 @@
-print('src/config.py')
