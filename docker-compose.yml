@@ -1,8 +1,8 @@
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/Dockerfile
     container_name: arxiv_backend
     ports:
       - "8000:8000"
@@ -25,13 +25,13 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./frontend/Dockerfile
     container_name: arxiv_frontend
     ports:
       - "8501:8501"
     depends_on:
-      - backend: service_started
+      - backend
     env_file: .env
     environment:
       - BACKEND_API_URL=http://backend:8000

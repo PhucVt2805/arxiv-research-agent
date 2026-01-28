@@ -4,13 +4,12 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project
+COPY frontend/pyproject.toml ./frontend/
+RUN uv sync --frozen --package arxiv-daily-digest-frontend --no-dev
 
-COPY src ./src
-
-RUN uv sync --frozen
+COPY frontend/src ./frontend/src
 
 ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/app"
+ENV PYTHONPATH=/app/frontend
 
 CMD ["streamlit", "run", "src/main.py", "--server.address=0.0.0.0", "--server.port=8501"]

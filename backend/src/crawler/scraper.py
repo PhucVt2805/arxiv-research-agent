@@ -1,7 +1,7 @@
 import arxiv
 from ast import List
 from src.model import ArxivPaper
-from typing import Literal, List
+from typing import Literal, List, Optional
 from src.utils.log_config import get_logger
 from pymongo.errors import DuplicateKeyError
 from datetime import datetime, timezone, timedelta
@@ -19,9 +19,11 @@ class ArxivScraper:
     def get_paper(
             self,
             topics: List[Literal["AI", "AR", "CC", "CE", "CL", "CR", "CV", "CY", "DB", "DC", "DL", "DM", "DS", "ET", "GR", "GT", "HC", "IR", "IT", "LO", "LG", "MA", "MM", "MS", "NA", "NE", "NI", "OS", "PF", "PL", "RO", "SC", "SD", "SE", "SI", "SY"]] = "AI",
-            days_back: int = 3
+            keyword: str = '',
+            days_back: Optional[int] = 3,
+            start_date: Optional[str] = None
         ) -> list[ArxivPaper]:
-        """Get recent papers from arXiv based on topic and date.
+        """Get recent papers from arXiv based on topic, keyword and date.
         
         Args:
             topic (Literal): The research area to filter papers. Defaults to "AI".
@@ -63,38 +65,59 @@ class ArxivScraper:
                     SI: Social and Information Networks
                     SY: Systems and Control
 
-            date_str (str): The date string in "dd/mm/yyyy" format to filter papers published after this date. Defaults to 3 days before today.
+            keyword: Keywords used to search for content users are interested in.
+            days_back: Number of days to start searching for content. Calculated as: today's date - days_back
 
         Returns:
             List[Dict[str, Any]]: A list of dictionaries containing paper details.
         """
         
-        logger.info(f'Calling the Arxiv API for topics: {topics} in the past {days_back}...')
+        logger.info(f"🔍 Crawling Keyword: '{keyword}' | Topics: {topics}")
+        if start_date:
+            try:
+                dt = datetime.strptime(start_date, "%Y-%m-%d")
+                cutoff_date = dt.replace(tzinfo=timezone.utc)
+                logger.info(f"🔍 Research Mode: Lấy bài từ ngày {cutoff_date}")
+            except ValueError:
+                logger.error("Format ngày sai, fallback về days_back")
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_back)
+        elif days_back:
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=max(days_back, 1))
+        else:
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=30)
         today = datetime.now(timezone.utc).date()
 
-        query = " OR ".join([f"cat:cs.{t}" for t in topics])
+        if not topics:
+            cat_part = 'cat:cs.*'
+        else:
+            cat_part = "(" + " OR ".join([f"cat:cs.{t}" for t in topics]) + ")"
+
+        if keyword.strip():
+            x = keyword.strip().replace('"', '')
+            key_part = f'all:"{x}"'
+
+            query = f'{key_part} AND {cat_part}'
+        else:
+            query = cat_part
+
+        logger.info(f'📡 Arxiv Query: {query}')
+
         search = arxiv.Search(
             query = query,
-            # Tạm sửa để chạy test
-            max_results = 10,
+            max_results = 300 if keyword else 100,
             sort_by = arxiv.SortCriterion.LastUpdatedDate,
             sort_order=arxiv.SortOrder.Descending
         )
-        results_list = []
 
+        results_list = []
         seen_ids = set()
 
         try:
             for result in self.client.results(search):
-                print(result.entry_id)
-                # Tạm comment để chạy test
-                # if result.updated.date() > today - timedelta(days=days_back):  
-                #     break
+                if result.updated.date() > today - cutoff_date: continue
                 short_id = result.entry_id.split('/')[-1]
 
-
-                if short_id in seen_ids:
-                    continue
+                if short_id in seen_ids: continue
                 seen_ids.add(short_id)
 
                 paper = ArxivPaper(
@@ -138,5 +161,5 @@ class ArxivScraper:
             except Exception as e:
                 logger.error(f'Error saving paper ID {paper.id}: {e}')
 
-        logger.info(f'✅ Saved {new_papers} new papers to the Mongodb.')
+        logger.info(f'✅ Saved {len(new_papers)} new papers to the Mongodb.')
         return new_papers

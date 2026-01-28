@@ -19,6 +19,8 @@ class ArxivPaper(Document):
     prime_category: str
     categories: List[str]
     crawled_at: date = Field(default_factory=lambda: datetime.now(timezone.utc).date())
+    deep_analysis: Optional[str] = None 
+    analyzed_at: Optional[datetime] = None
 
     class Settings:
         name = "arxiv_papers"
